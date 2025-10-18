@@ -1,0 +1,4 @@
+FROM phpmyadmin/phpmyadmin:latest
+
+ENV PMA_HOST=mysql-container \
+    MYSQL_ROOT_PASSWORD=root 
