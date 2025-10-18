@@ -1,0 +1,83 @@
+name: watches
+
+services:
+  baza:
+    container_name: mysql-container
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: watches
+      MYSQL_USER: luka
+      MYSQL_PASSWORD: luka
+    networks:
+      - mreza
+    volumes:
+      - baza:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h localhost -proot || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  admin:
+    container_name: phpmyadmin-container
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.phpmyadmin
+    environment:
+      PMA_HOST: mysql-container
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - mreza
+    ports:
+      - '8000:80'
+    restart: unless-stopped
+    depends_on:
+      baza:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost/ >/dev/null || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  sajt:
+    container_name: wordpress-container
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.wordpress
+    environment:
+      WORDPRESS_DB_HOST: mysql-container
+      WORDPRESS_DB_USER: luka
+      WORDPRESS_DB_PASSWORD: luka
+      WORDPRESS_DB_NAME: watches
+    depends_on:
+      baza:
+        condition: service_healthy
+    networks:
+      - mreza
+    ports:
+      - '8001:80'
+    volumes:
+      - type: bind
+        source: ./wp_fajlovi
+        target: /var/www/html
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'curl -fsS http://localhost/wp-login.php >/dev/null || exit 1',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+networks:
+  mreza: {}
+
+volumes:
+  baza: {}
